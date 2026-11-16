@@ -1,0 +1,34 @@
+# Local services. Supabase itself is the cloud project in .env.local, or a local
+# stack via the Supabase CLI (`pnpm dlx supabase start`), see README.
+services:
+  # HTML → PDF for receipts, statements, POs and reports.
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    command: ["gotenberg", "--api-timeout=60s", "--log-level=warn"]
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Disposable Postgres for integration tests (TEST_DATABASE_URL). Not Supabase:
+  # no auth/storage schemas. Start with: docker compose --profile localdb up -d
+  testdb:
+    image: postgres:16-alpine
+    profiles: ["localdb"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pos_test
+    ports:
+      - "54329:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pos_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
